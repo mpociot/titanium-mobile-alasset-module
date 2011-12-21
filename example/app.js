@@ -15,6 +15,7 @@ window.open();
 var module_assetlibrary = require('de.marcelpociot.assetlibrary');
 Ti.API.info("module is => " + module_assetlibrary);
 module_assetlibrary.assets({
+	group:  "all",
 	load: function(e){
 		var image 		= e.image;
 		var thumbnail	= e.thumbnail;

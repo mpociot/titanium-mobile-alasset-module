@@ -93,7 +93,24 @@
     ENSURE_UI_THREAD_1_ARG(args);
     ENSURE_SINGLE_ARG(args,NSDictionary);
     
-    id loaded        = [args objectForKey:@"load"];
+    id loaded       = [args objectForKey:@"load"];
+    NSString *group = [args objectForKey:@"group"];
+    ENSURE_STRING_OR_NIL(group);
+    
+    NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
+    if( group == nil ){
+        group = @"savedPhotos";
+    }
+    if( [group isEqualToString:@"savedPhotos"] ){
+        groupTypes  = ALAssetsGroupSavedPhotos;
+    } else if( [group isEqualToString:@"photoStream"] ){
+        groupTypes  = ALAssetsGroupPhotoStream;
+    } else if( [group isEqualToString:@"faces"] ){
+        groupTypes  = ALAssetsGroupFaces;
+    } else if( [group isEqualToString:@"all"] ){
+        groupTypes  = ALAssetsGroupAll;
+    }
+    
     RELEASE_TO_NIL(loadedCallback);
     loadedCallback  = [loaded retain];
     void (^assetGroupEnumerator) (ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop){
@@ -128,7 +145,6 @@
     };
     
     ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
-    NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
     
     [library enumerateGroupsWithTypes:groupTypes
                            usingBlock:assetGroupEnumerator
