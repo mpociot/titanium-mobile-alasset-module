@@ -1,0 +1,43 @@
+ALAsset Module for Appcelerator Titanium
+======================
+
+DESCRIPTION
+=======================
+With this module you get access to the ALAsset framework.
+This means, you can list all images (videos are not supported yet) from the users camera roll.
+
+As the assets will get enumerated asynchronous, you have to define a "load" callback, which returns an object with the following properties:
+image: 		TiBlob object containing the large image
+thumbnail:	TiBlob object containing the image thumbnail
+index:		current index
+
+Everything is licensed under MIT
+
+USAGE
+========================
+var module = require('de.marcelpociot.assetlibrary');
+Ti.API.info("module is => " + module);
+module.assets({
+	load: function(e){
+		var image 		= e.image;
+		var thumbnail	= e.thumbnail;
+		var index		= e.index;
+		var view		= Ti.UI.createImageView({
+			image: thumbnail,
+			top: 0,
+			left: (index * 50),
+			width: 50,
+			height: 50
+		});
+		window.add(view);
+	}
+});
+
+TODO
+========================
+There is currently no access to asset groups or videos.
+
+ABOUT THE AUTHOR
+========================
+I'm a web enthusiast located in germany.
+Follow me on twitter: @marcelpociot

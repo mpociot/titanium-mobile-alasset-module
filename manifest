@@ -1,0 +1,17 @@
+#
+# this is your module manifest and used by Titanium
+# during compilation, packaging, distribution, etc.
+#
+version: 1.0
+description: My module
+author: Marcel Pociot
+license: MIT
+copyright: Marcel Pociot
+
+
+# these should not be edited
+name: module-assetlibrary
+moduleid: de.marcelpociot.assetlibrary
+guid: defc264a-b629-4903-91b9-a7c1354ed3d6
+platform: iphone
+minsdk: 1.7.5
