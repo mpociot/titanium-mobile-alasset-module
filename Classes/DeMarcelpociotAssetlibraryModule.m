@@ -87,13 +87,126 @@
 }
 
 #pragma Public APIs
+-(void)assetForUrl:(id)args
+{
+    ENSURE_UI_THREAD_1_ARG(args);
+    ENSURE_SINGLE_ARG(args,NSDictionary);
+    
+    id onasset       = [args objectForKey:@"assetCallback"];
+    NSString *sUrl = [args objectForKey:@"url"];
+    NSURL *url = [[NSURL alloc] initWithString:sUrl];
+    
+    ENSURE_STRING_OR_NIL(sUrl);
+    
+    RELEASE_TO_NIL(assetUrlCallback);
+    assetUrlCallback  = [onasset retain];
+    
+    void (^assetForURLResultBlock)(ALAsset *) = ^(ALAsset *result)
+    {
+        if( result != nil )
+        {
+            ALAssetRepresentation *rep = [result defaultRepresentation];
+            NSURL *url = [[result defaultRepresentation] url];
+            NSString *sUrl = [url absoluteString];
+            CGImageRef iref = [rep fullResolutionImage];
+            if (iref) {
+                UIImage *largeimage;
+                largeimage = [UIImage imageWithCGImage:iref];
+                UIImage *thumbnail;
+                thumbnail   = [UIImage imageWithCGImage:[result thumbnail]];
+                NSDictionary *event = [NSDictionary 
+                                       dictionaryWithObjectsAndKeys:
+                                       [[[TiBlob alloc] initWithImage:largeimage] autorelease],
+                                       @"image",
+                                       [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
+                                       @"thumbnail",
+                                       sUrl,
+                                       @"url",
+                                       nil];
+                if (assetUrlCallback!=nil)
+                {
+                    [self _fireEventToListener:@"onAsset" withObject:event listener:assetUrlCallback thisObject:nil];
+                }
+            }
+        }
+    };
+    
+    ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+    
+    [library assetForURL:url
+             resultBlock:assetForURLResultBlock
+            failureBlock:^(NSError *error){NSLog(@"assetForUrl: Failure");}];
+    
+    [library release];
+}
+
+
+-(void)groups:(id)args
+{
+    ENSURE_UI_THREAD_1_ARG(args);
+    ENSURE_SINGLE_ARG(args,NSDictionary);
+    
+    id ongroup       = [args objectForKey:@"groupCallback"];
+    NSString *group = [args objectForKey:@"group"];
+    ENSURE_STRING_OR_NIL(group);
+    
+    NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
+    if( group == nil ){
+        group = @"all";
+    }
+    if( [group isEqualToString:@"savedPhotos"] ){
+        groupTypes  = ALAssetsGroupSavedPhotos;
+    } else if( [group isEqualToString:@"photoStream"] ){
+        groupTypes  = ALAssetsGroupPhotoStream;
+    } else if( [group isEqualToString:@"faces"] ){
+        groupTypes  = ALAssetsGroupFaces;
+    } else if( [group isEqualToString:@"all"] ){
+        groupTypes  = ALAssetsGroupAll;
+    }
+    
+    RELEASE_TO_NIL(groupCallback);
+    groupCallback  = [ongroup retain];
+    void (^assetGroupEnumerator) (ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop){
+        if(group != nil) {
+            CGImageRef iref = [group posterImage];
+            UIImage *poster;
+            poster = [UIImage imageWithCGImage:iref];
+            NSString * groupName = [group valueForProperty:ALAssetsGroupPropertyName];
+            
+            
+            NSDictionary *event = [NSDictionary 
+                                   dictionaryWithObjectsAndKeys:
+                                   groupName,
+                                   @"group",
+                                   [[[TiBlob alloc] initWithImage:poster] autorelease],
+                                   @"posterImage",
+                                   NUMINT([group numberOfAssets]),
+                                   @"assets",
+                                   nil];
+            if (groupCallback!=nil)
+            {
+                [self _fireEventToListener:@"onGroup" withObject:event listener:groupCallback thisObject:nil];
+            }
+            
+            
+        }
+    };
+    
+    ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+    
+    [library enumerateGroupsWithTypes:groupTypes
+                           usingBlock:assetGroupEnumerator
+                         failureBlock:^(NSError *error) {}];
+    [library release];
+}
+
 
 -(void)assets:(id)args
 {
     ENSURE_UI_THREAD_1_ARG(args);
     ENSURE_SINGLE_ARG(args,NSDictionary);
     
-    id loaded       = [args objectForKey:@"load"];
+    id loaded       = [args objectForKey:@"assetCallback"];
     NSString *group = [args objectForKey:@"group"];
     ENSURE_STRING_OR_NIL(group);
     
@@ -119,6 +232,8 @@
                 if( result != nil )
                 {
                     ALAssetRepresentation *rep = [result defaultRepresentation];
+                    NSURL *url = [[result defaultRepresentation] url];
+                    NSString *sUrl = [url absoluteString];
                     CGImageRef iref = [rep fullResolutionImage];
                     if (iref) {
                         UIImage *largeimage;
@@ -133,11 +248,78 @@
                                                @"thumbnail",
                                                NUMINT(index),
                                                @"index",
+                                               sUrl,
+                                               @"url",
                                                nil];
                         if (loadedCallback!=nil)
                         {
-                            [self _fireEventToListener:@"loaded" withObject:event listener:loadedCallback thisObject:nil];
+                            [self _fireEventToListener:@"onAsset" withObject:event listener:loadedCallback thisObject:nil];
                         }
+                    }
+                }
+            }];
+        }
+    };
+    
+    ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+    
+    [library enumerateGroupsWithTypes:groupTypes
+                           usingBlock:assetGroupEnumerator
+                         failureBlock:^(NSError *error) {}];
+    [library release];
+}
+
+-(void)assetThumbnails:(id)args
+{
+    ENSURE_UI_THREAD_1_ARG(args);
+    ENSURE_SINGLE_ARG(args,NSDictionary);
+    
+    id onthumb       = [args objectForKey:@"thumbnailCallback"];
+    NSString *group = [args objectForKey:@"group"];
+    ENSURE_STRING_OR_NIL(group);
+    int page        = [TiUtils intValue:[args objectForKey:@"page"] def:1] - 1;
+    int perPage     = [TiUtils intValue:[args objectForKey:@"perPage"] def:25];
+    
+    int fromIndex   = page * perPage;
+    int toIndex     = fromIndex + perPage;
+
+    NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
+    if( group == nil ){
+        group = @"savedPhotos";
+    }
+    if( [group isEqualToString:@"savedPhotos"] ){
+        groupTypes  = ALAssetsGroupSavedPhotos;
+    } else if( [group isEqualToString:@"photoStream"] ){
+        groupTypes  = ALAssetsGroupPhotoStream;
+    } else if( [group isEqualToString:@"faces"] ){
+        groupTypes  = ALAssetsGroupFaces;
+    } else if( [group isEqualToString:@"all"] ){
+        groupTypes  = ALAssetsGroupAll;
+    }
+    RELEASE_TO_NIL(thumbCallback);
+    thumbCallback  = [onthumb retain];
+    void (^assetGroupEnumerator) (ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop){
+        if(group != nil) {
+            [group enumerateAssetsUsingBlock:^(ALAsset *result, NSUInteger index, BOOL *stop) {
+                if( result != nil )
+                {
+                    if( (index >= fromIndex) && (index <= toIndex) ){
+                        NSURL *url = [[result defaultRepresentation] url];
+                        NSString *sUrl = [url absoluteString];
+                            UIImage *thumbnail = [UIImage imageWithCGImage:[result thumbnail]];
+                            NSDictionary *event = [NSDictionary 
+                                                   dictionaryWithObjectsAndKeys:
+                                                   [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
+                                                   @"thumbnail",
+                                                   NUMINT(index),
+                                                   @"index",
+                                                   sUrl,
+                                                   @"url",
+                                                   nil];
+                            if (thumbCallback!=nil)
+                            {
+                                [self _fireEventToListener:@"onThumbnail" withObject:event listener:thumbCallback thisObject:nil];
+                            }
                     }
                 }
             }];

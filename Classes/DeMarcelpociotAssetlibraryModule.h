@@ -10,6 +10,9 @@
 {
     NSMutableArray* images;
     KrollCallback *loadedCallback;
+    KrollCallback *groupCallback;
+    KrollCallback *thumbCallback;
+    KrollCallback *assetUrlCallback;
 }
 
 @end
