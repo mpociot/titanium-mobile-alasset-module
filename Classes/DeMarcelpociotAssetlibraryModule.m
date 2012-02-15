@@ -108,10 +108,8 @@
             ALAssetRepresentation *rep = [result defaultRepresentation];
             NSURL *url = [[result defaultRepresentation] url];
             NSString *sUrl = [url absoluteString];
-            CGImageRef iref = [rep fullResolutionImage];
-            if (iref) {
                 UIImage *largeimage;
-                largeimage = [UIImage imageWithCGImage:iref];
+                largeimage = [UIImage imageWithCGImage:[rep fullScreenImage]];
                 UIImage *thumbnail;
                 thumbnail   = [UIImage imageWithCGImage:[result thumbnail]];
                 NSDictionary *event = [NSDictionary 
@@ -127,7 +125,7 @@
                 {
                     [self _fireEventToListener:@"onAsset" withObject:event listener:assetUrlCallback thisObject:nil];
                 }
-            }
+            
         }
     };
     
@@ -296,6 +294,7 @@
     } else if( [group isEqualToString:@"all"] ){
         groupTypes  = ALAssetsGroupAll;
     }
+    NSMutableArray *assets  = [[NSMutableArray alloc] init];
     RELEASE_TO_NIL(thumbCallback);
     thumbCallback  = [onthumb retain];
     void (^assetGroupEnumerator) (ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop){
@@ -316,10 +315,14 @@
                                                    sUrl,
                                                    @"url",
                                                    nil];
-                            if (thumbCallback!=nil)
-                            {
-                                [self _fireEventToListener:@"onThumbnail" withObject:event listener:thumbCallback thisObject:nil];
-                            }
+                            [assets addObject:event];
+                    }
+                } else {
+                    if (thumbCallback!=nil)
+                    {
+                        NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:assets,@"assets", nil];
+                        [self _fireEventToListener:@"onThumbnail" withObject:event listener:thumbCallback thisObject:nil];
+                        [assets release];
                     }
                 }
             }];
