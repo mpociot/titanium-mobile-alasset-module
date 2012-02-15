@@ -6,12 +6,13 @@ window.add(label);
 window.open();
 
 var assetManager = require('de.marcelpociot.assetlibrary');
-assetManager.assetThumbnails({
-			page: 1,
-			perPage: 1000,
+assetManager.latestPhotos({
+			amount: 2,
 			group:  "all",
-			thumbnailCallback: function(e){
+			done: function(e){
 				var assets = e.assets;
+				alert(assets.length);
+				alert(assets);
 				for( var i=0,max=assets.length; i<max; i++ ){
 					var asset 		= assets[i];
 					var thumbnail	= asset.thumbnail;

@@ -337,6 +337,74 @@
     [library release];
 }
 
+-(void)latestPhotos:(id)args
+{
+    ENSURE_UI_THREAD_1_ARG(args);
+    ENSURE_SINGLE_ARG(args,NSDictionary);
+    
+    id onthumb       = [args objectForKey:@"done"];
+    NSString *group = [args objectForKey:@"group"];
+    ENSURE_STRING_OR_NIL(group);
+    int amount        = [TiUtils intValue:[args objectForKey:@"amount"] def:10];
+    
+    NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
+    if( group == nil ){
+        group = @"savedPhotos";
+    }
+    if( [group isEqualToString:@"savedPhotos"] ){
+        groupTypes  = ALAssetsGroupSavedPhotos;
+    } else if( [group isEqualToString:@"photoStream"] ){
+        groupTypes  = ALAssetsGroupPhotoStream;
+    } else if( [group isEqualToString:@"faces"] ){
+        groupTypes  = ALAssetsGroupFaces;
+    } else if( [group isEqualToString:@"all"] ){
+        groupTypes  = ALAssetsGroupAll;
+    }
+    NSMutableArray *assets  = [[NSMutableArray alloc] init];
+    RELEASE_TO_NIL(thumbCallback);
+    thumbCallback  = [onthumb retain];
+    void (^assetGroupEnumerator) (ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop){
+        if(group != nil) {
+            [group enumerateAssetsUsingBlock:^(ALAsset *result, NSUInteger index, BOOL *stop) {
+                if( result != nil )
+                {
+                        NSURL *url = [[result defaultRepresentation] url];
+                        NSString *sUrl = [url absoluteString];
+                        UIImage *thumbnail = [UIImage imageWithCGImage:[result thumbnail]];
+                        NSDictionary *event = [NSDictionary 
+                                               dictionaryWithObjectsAndKeys:
+                                               [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
+                                               @"thumbnail",
+                                               NUMINT(index),
+                                               @"index",
+                                               sUrl,
+                                               @"url",
+                                               nil];
+                        [assets addObject:event];
+                } else {
+                    if (thumbCallback!=nil)
+                    {
+                        if( [assets count] > amount ){
+                            int start = [assets count]-amount;
+                            [assets removeObjectsInRange:NSMakeRange(0, start)];
+                        }
+                        NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:assets,@"assets", nil];
+                        [self _fireEventToListener:@"onThumbnail" withObject:event listener:thumbCallback thisObject:nil];
+                        [assets release];
+                    }
+                }
+            }];
+        }
+    };
+    
+    ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+    
+    [library enumerateGroupsWithTypes:groupTypes
+                           usingBlock:assetGroupEnumerator
+                         failureBlock:^(NSError *error) {}];
+    [library release];
+}
+
 -(id)exampleProp
 {
 	// example property getter
