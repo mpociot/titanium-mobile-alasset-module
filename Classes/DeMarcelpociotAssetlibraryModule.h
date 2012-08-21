@@ -15,4 +15,6 @@
     KrollCallback *assetUrlCallback;
 }
 
+-(NSDictionary *)exif:(id)asset;
+
 @end
