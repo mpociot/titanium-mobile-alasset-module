@@ -26,16 +26,20 @@ var module = require('de.marcelpociot.assetlibrary');
 Ti.API.info("module is => " + module);
 module.assets({
 	group:  "all",
-	load: function(e){
+	assetCallback: function(e){
 		var image 		= e.image;
 		var thumbnail	= e.thumbnail;
 		var index		= e.index;
+		var meta = e.meta;
+
 		var view		= Ti.UI.createImageView({
 			image: thumbnail,
 			top: 0,
 			left: (index * 50),
 			width: 50,
-			height: 50
+			height: 50,
+			exif: meta.exif,
+			location: meta.location,
 		});
 		window.add(view);
 	}
