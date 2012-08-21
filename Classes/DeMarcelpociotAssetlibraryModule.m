@@ -8,7 +8,10 @@
 #import "TiBase.h"
 #import "TiHost.h"
 #import "TiUtils.h"
-#import "AssetsLibrary/AssetsLibrary.h"
+
+#import <QuartzCore/QuartzCore.h>
+#import <AssetsLibrary/AssetsLibrary.h>
+#import <CoreLocation/CoreLocation.h>
 
 @implementation DeMarcelpociotAssetlibraryModule
 
@@ -112,8 +115,12 @@
                 largeimage = [UIImage imageWithCGImage:[rep fullScreenImage]];
                 UIImage *thumbnail;
                 thumbnail   = [UIImage imageWithCGImage:[result thumbnail]];
-                NSDictionary *event = [NSDictionary 
+            
+            
+                NSDictionary *event = [NSDictionary
                                        dictionaryWithObjectsAndKeys:
+                                       [[self exif:result] autorelease],
+                                       @"meta",
                                        [[[TiBlob alloc] initWithImage:largeimage] autorelease],
                                        @"image",
                                        [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
@@ -233,13 +240,17 @@
                     NSURL *url = [[result defaultRepresentation] url];
                     NSString *sUrl = [url absoluteString];
                     CGImageRef iref = [rep fullResolutionImage];
+
                     if (iref) {
                         UIImage *largeimage;
                         largeimage = [UIImage imageWithCGImage:iref];
                         UIImage *thumbnail;
                         thumbnail   = [UIImage imageWithCGImage:[result thumbnail]];
+                        
                         NSDictionary *event = [NSDictionary 
                                                dictionaryWithObjectsAndKeys:
+                                               [[self exif:result] autorelease],
+                                               @"meta",
                                                [[[TiBlob alloc] initWithImage:largeimage] autorelease],
                                                @"image",
                                                [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
@@ -248,6 +259,7 @@
                                                @"index",
                                                sUrl,
                                                @"url",
+
                                                nil];
                         if (loadedCallback!=nil)
                         {
@@ -263,7 +275,7 @@
     
     [library enumerateGroupsWithTypes:groupTypes
                            usingBlock:assetGroupEnumerator
-                         failureBlock:^(NSError *error) {}];
+                         failureBlock:^(NSError *error) { }];
     [library release];
 }
 
@@ -306,8 +318,11 @@
                         NSURL *url = [[result defaultRepresentation] url];
                         NSString *sUrl = [url absoluteString];
                             UIImage *thumbnail = [UIImage imageWithCGImage:[result thumbnail]];
+                        
                             NSDictionary *event = [NSDictionary 
                                                    dictionaryWithObjectsAndKeys:
+                                                   [[self exif:result] autorelease],
+                                                   @"meta",
                                                    [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
                                                    @"thumbnail",
                                                    NUMINT(index),
@@ -371,8 +386,12 @@
                         NSURL *url = [[result defaultRepresentation] url];
                         NSString *sUrl = [url absoluteString];
                         UIImage *thumbnail = [UIImage imageWithCGImage:[result thumbnail]];
-                        NSDictionary *event = [NSDictionary 
+                    
+                    
+                        NSDictionary *event = [NSDictionary
                                                dictionaryWithObjectsAndKeys:
+                                               [[self exif:result] autorelease],
+                                               @"meta",
                                                [[[TiBlob alloc] initWithImage:thumbnail] autorelease],
                                                @"thumbnail",
                                                NUMINT(index),
@@ -410,4 +429,27 @@
 	// example property getter
 	return images;
 }
+
+-(NSDictionary *)exif:(id)asset {
+    NSMutableDictionary *dictMeta = [[NSMutableDictionary alloc] init];
+    
+    NSDictionary *metadata = [[asset defaultRepresentation] metadata];
+    NSDictionary *exif = [metadata objectForKey:@"{Exif}"];
+    CLLocation *location = [asset valueForProperty:ALAssetPropertyLocation];
+    CLLocationCoordinate2D coordinate = [location coordinate];
+    NSDictionary *gps = [NSDictionary dictionaryWithObjectsAndKeys:
+                         [NSNumber numberWithDouble:coordinate.latitude],@"latitude",
+                         [NSNumber numberWithDouble:coordinate.longitude],@"longitude",
+                         nil];
+    if (gps != nil) {
+        [dictMeta setObject:gps forKey:@"location"];
+    }
+    
+    if (exif != nil) {
+        [dictMeta setObject:exif forKey:@"exif"];
+    }
+        
+    return dictMeta;
+}
+
 @end
