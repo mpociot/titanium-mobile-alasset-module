@@ -176,13 +176,18 @@
             CGImageRef iref = [group posterImage];
             UIImage *poster;
             poster = [UIImage imageWithCGImage:iref];
-            NSString * groupName = [group valueForProperty:ALAssetsGroupPropertyName];
-            
+            NSString *groupName = [group valueForProperty:ALAssetsGroupPropertyName];
+            NSString *groupId = [group valueForProperty:ALAssetsGroupPropertyPersistentID];
+            NSString *groupUrl = [group valueForProperty:ALAssetsGroupPropertyURL];
             
             NSDictionary *event = [NSDictionary 
                                    dictionaryWithObjectsAndKeys:
                                    groupName,
                                    @"group",
+                                   groupId,
+                                   @"groupId",
+                                   groupUrl,
+                                   @"groupUrl",
                                    [[[TiBlob alloc] initWithImage:poster] autorelease],
                                    @"posterImage",
                                    NUMINT([group numberOfAssets]),
@@ -213,7 +218,9 @@
     
     id loaded       = [args objectForKey:@"assetCallback"];
     NSString *group = [args objectForKey:@"group"];
+    NSString *filterByGroupId = [args objectForKey:@"filterByGroupId"];
     ENSURE_STRING_OR_NIL(group);
+    ENSURE_STRING_OR_NIL(filterByGroupId);
     
     NSUInteger groupTypes = ALAssetsGroupSavedPhotos;
     if( group == nil ){
@@ -246,9 +253,15 @@
                         largeimage = [UIImage imageWithCGImage:iref];
                         UIImage *thumbnail;
                         thumbnail   = [UIImage imageWithCGImage:[result thumbnail]];
+                        NSString *groupId = [group valueForProperty:ALAssetsGroupPropertyPersistentID];
+                        NSString *groupUrl = [group valueForProperty:ALAssetsGroupPropertyURL];
                         
                         NSDictionary *event = [NSDictionary 
                                                dictionaryWithObjectsAndKeys:
+                                               groupId,
+                                               @"groupId",
+                                               groupUrl,
+                                               @"groupUrl",
                                                [[self exif:result] autorelease],
                                                @"meta",
                                                [[[TiBlob alloc] initWithImage:largeimage] autorelease],
@@ -263,7 +276,9 @@
                                                nil];
                         if (loadedCallback!=nil)
                         {
-                            [self _fireEventToListener:@"onAsset" withObject:event listener:loadedCallback thisObject:nil];
+                            if( filterByGroupId == nil || [filterByGroupId isEqualToString:groupId]){
+                                [self _fireEventToListener:@"onAsset" withObject:event listener:loadedCallback thisObject:nil];
+                            }
                         }
                     }
                 }
